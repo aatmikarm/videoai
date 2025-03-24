@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Silence Cutter</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Silence Cutter</h1>
+        
+        <div class="form-group">
+            <label for="threshold">Silence Threshold (dB):</label>
+            <input type="range" id="threshold" min="-60" max="-10" value="-30" step="1">
+            <span id="thresholdValue">-30 dB</span>
+        </div>
+        
+        <div class="form-group">
+            <label for="minDuration">Minimum Silence Duration (ms):</label>
+            <input type="range" id="minDuration" min="100" max="2000" value="500" step="50">
+            <span id="minDurationValue">500 ms</span>
+        </div>
+        
+        <div class="form-group">
+            <label for="padding">Padding Around Cuts (ms):</label>
+            <input type="range" id="padding" min="0" max="500" value="100" step="10">
+            <span id="paddingValue">100 ms</span>
+        </div>
+        
+        <div class="button-container">
+            <button id="analyzeBtn" class="primary-btn">Analyze Sequence</button>
+            <button id="cutBtn" class="action-btn" disabled>Cut Silences</button>
+        </div>
+        
+        <div id="status" class="status-container">
+            <p>Ready to analyze. Select a sequence in Premiere Pro.</p>
+        </div>
+        
+        <div id="results" class="results-container hidden">
+            <h3>Analysis Results:</h3>
+            <p id="silenceCount">Silences found: 0</p>
+            <p id="totalDuration">Total silence duration: 0 sec</p>
+        </div>
+    </div>
+
+    <script src="js/lib/CSInterface.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
