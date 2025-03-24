@@ -186,9 +186,8 @@ function cutSilence(paramsStr) {
             });
         }
         
-        // Alternative approach using standard ExtendScript (no QE DOM)
-        app.project.beginUndoGroup("Cut Silences");
-        
+        // Alternative approach using standard ExtendScript (no QE DOM and no undo groups)
+        // We'll skip using beginUndoGroup since it appears to not be available
         var cutCount = 0;
         
         try {
@@ -230,26 +229,17 @@ function cutSilence(paramsStr) {
                 }
             }
             
-            app.project.endUndoGroup();
-            
+            // Return success
             return JSON.stringify({
                 success: true,
                 cutCount: cutCount
             });
         } catch (error) {
-            app.project.endUndoGroup();
-            
             return JSON.stringify({
                 error: "Error during cutting: " + error.message
             });
         }
     } catch (outerError) {
-        try {
-            app.project.endUndoGroup();
-        } catch (e) {
-            // Ignore errors when ending undo group
-        }
-        
         return JSON.stringify({
             error: "Outer error: " + outerError.message
         });

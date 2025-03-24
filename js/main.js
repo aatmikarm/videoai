@@ -98,7 +98,6 @@ cutBtn.addEventListener('click', function() {
     csInterface.evalScript(jsCode, function(result) {
         // Log the exact raw result for debugging
         console.log("Raw result from ExtendScript (cutSilence):", result);
-        document.getElementById('status').innerHTML = '<p>Raw result: ' + result + '</p>';
         
         try {
             // Try to parse JSON with extra safety
@@ -121,7 +120,16 @@ cutBtn.addEventListener('click', function() {
             }
             
             if (cutResults.error) {
-                updateStatus('Error: ' + cutResults.error);
+                // Check for common errors and provide more helpful messages
+                if (cutResults.error.includes("beginUndoGroup")) {
+                    updateStatus('Error: This version of Premiere Pro does not support undo groups. ' +
+                                'The extension will still work but you cannot undo cuts as a group.');
+                } else if (cutResults.error.includes("is not a function")) {
+                    updateStatus('Error: ' + cutResults.error + 
+                                '. This may be due to compatibility issues with this version of Premiere Pro.');
+                } else {
+                    updateStatus('Error: ' + cutResults.error);
+                }
                 return;
             }
             
@@ -129,7 +137,7 @@ cutBtn.addEventListener('click', function() {
         } catch (e) {
             console.error("Error parsing result:", e);
             console.error("Result was:", result);
-            updateStatus('Error processing results: ' + e.message + '<br>Raw result: ' + result);
+            updateStatus('Error processing results: ' + e.message);
         }
     });
 });
