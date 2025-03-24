@@ -2,6 +2,19 @@
 
 // Analyze a sequence for silence
 function analyzeSilence(paramsStr) {
+    // Debug log
+    $.writeln("------------------------------------");
+    $.writeln("analyzeSilence called with: " + paramsStr);
+    
+    // Add more detailed debug info
+    $.writeln("App available: " + (typeof app !== 'undefined'));
+    if (typeof app !== 'undefined') {
+        $.writeln("Project available: " + (typeof app.project !== 'undefined'));
+        if (typeof app.project !== 'undefined') {
+            $.writeln("Active sequence available: " + (typeof app.project.activeSequence !== 'undefined'));
+        }
+    }
+    
     try {
         // Parse parameters
         // Add error checking for paramsStr
@@ -24,6 +37,13 @@ function analyzeSilence(paramsStr) {
         var minDuration = parseInt(params.minDuration);       // ms
         var padding = parseInt(params.padding);               // ms
         
+        // Check if app and project exist
+        if (!app || !app.project) {
+            return JSON.stringify({
+                error: "Could not access Premiere Pro project."
+            });
+        }
+        
         // Get active sequence
         var activeSequence = app.project.activeSequence;
         if (!activeSequence) {
@@ -34,10 +54,27 @@ function analyzeSilence(paramsStr) {
         
         // Check for audio tracks
         var audioTrackCount = 0;
-        for (var i = 0; i < activeSequence.audioTracks.numTracks; i++) {
-            if (activeSequence.audioTracks[i].clips.numItems > 0) {
-                audioTrackCount++;
+        
+        // Verify audioTracks exists
+        if (!activeSequence.audioTracks) {
+            return JSON.stringify({
+                error: "Could not access audio tracks."
+            });
+        }
+        
+        try {
+            for (var i = 0; i < activeSequence.audioTracks.numTracks; i++) {
+                // Safely check if track and clips exist
+                if (activeSequence.audioTracks[i] && 
+                    activeSequence.audioTracks[i].clips && 
+                    activeSequence.audioTracks[i].clips.numItems > 0) {
+                    audioTrackCount++;
+                }
             }
+        } catch(e) {
+            return JSON.stringify({
+                error: "Error checking audio tracks: " + e.message
+            });
         }
         
         if (audioTrackCount === 0) {
@@ -46,10 +83,36 @@ function analyzeSilence(paramsStr) {
             });
         }
         
-        // Get sequence details
-        var fps = activeSequence.timebase / activeSequence.timeDisplayFormat.ticks; // frames per second
-        var sampleRate = 48000; // typical audio sample rate
-        var sequenceDuration = activeSequence.end.seconds; // sequence duration in seconds
+        // Get sequence details with error checking
+        var fps, sequenceDuration;
+        try {
+            // Check if sequence has necessary properties
+            if (!activeSequence.timebase) {
+                $.writeln("Warning: timebase not available, using default 30fps");
+                fps = 30; // Default fallback
+            } else if (!activeSequence.timeDisplayFormat || !activeSequence.timeDisplayFormat.ticks) {
+                $.writeln("Warning: timeDisplayFormat not available, calculating fps alternatively");
+                fps = activeSequence.timebase / 254016000000; // Default ticks per second
+            } else {
+                fps = activeSequence.timebase / activeSequence.timeDisplayFormat.ticks;
+            }
+            
+            // Get sequence duration
+            if (!activeSequence.end || typeof activeSequence.end.seconds !== 'number') {
+                $.writeln("Warning: end time not available, using default 60 seconds");
+                sequenceDuration = 60; // Default fallback
+            } else {
+                sequenceDuration = activeSequence.end.seconds;
+            }
+            
+            var sampleRate = 48000; // typical audio sample rate
+            
+            $.writeln("Sequence details - FPS: " + fps + ", Duration: " + sequenceDuration);
+        } catch(e) {
+            return JSON.stringify({
+                error: "Error getting sequence details: " + e.message
+            });
+        }
         
         // For demo/MVP, we'll simulate the audio analysis process
         // In a production version, this would do actual audio analysis of the sequence
