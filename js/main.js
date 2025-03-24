@@ -47,7 +47,8 @@ analyzeBtn.addEventListener('click', function() {
     var paramsStr = JSON.stringify(params);
     
     // Call ExtendScript function
-    csInterface.evalScript('analyzeSilence(' + paramsStr + ')', function(result) {
+    // Make sure we're properly quoting the JSON string for ExtendScript
+    csInterface.evalScript('analyzeSilence(\'' + paramsStr.replace(/\\/g, '\\\\').replace(/'/g, '\\\'') + '\')', function(result) {
         try {
             // Parse the result
             silenceResults = JSON.parse(result);

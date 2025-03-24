@@ -4,7 +4,22 @@
 function analyzeSilence(paramsStr) {
     try {
         // Parse parameters
-        var params = JSON.parse(paramsStr);
+        // Add error checking for paramsStr
+        if (!paramsStr || typeof paramsStr !== "string") {
+            return JSON.stringify({
+                error: "Invalid parameters format"
+            });
+        }
+        
+        var params;
+        try {
+            params = JSON.parse(paramsStr);
+        } catch (e) {
+            return JSON.stringify({
+                error: "Failed to parse parameters: " + e.message
+            });
+        }
+        
         var threshold = parseFloat(params.threshold);         // dB threshold
         var minDuration = parseInt(params.minDuration);       // ms
         var padding = parseInt(params.padding);               // ms
