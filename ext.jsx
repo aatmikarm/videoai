@@ -137,9 +137,21 @@ function analyzeSilence(paramsStr) {
 
 // Cut silence in a sequence
 function cutSilence(paramsStr) {
+    // Debug output
+    $.writeln("------------------------------------");
+    $.writeln("cutSilence called with: " + paramsStr);
+    
     try {
         // Parse parameters
-        var params = JSON.parse(paramsStr);
+        var params;
+        try {
+            params = JSON.parse(paramsStr);
+        } catch (e) {
+            return JSON.stringify({
+                error: "Failed to parse parameters: " + e.message
+            });
+        }
+        
         var markers = params.markers;
         var padding = parseInt(params.padding) / 1000; // convert to seconds
         
@@ -151,59 +163,72 @@ function cutSilence(paramsStr) {
             });
         }
         
-        // Premiere Pro operations to perform the cuts
-        // Note: This is a simplified version for the MVP
-        app.enableQE(); // Enable Premiere Pro's QE DOM
-        var qeSequence = qe.project.getActiveSequence();
-        
-        if (!qeSequence) {
-            return JSON.stringify({
-                error: "Could not access the QE sequence."
-            });
-        }
-        
-        // Create an undo group for this operation
+        // Alternative approach using standard ExtendScript (no QE DOM)
         app.project.beginUndoGroup("Cut Silences");
         
-        // Process the markers in reverse order to avoid changing timecodes
         var cutCount = 0;
-        for (var i = markers.length - 1; i >= 0; i--) {
-            var start = markers[i].start + padding;
-            var end = markers[i].end - padding;
+        
+        try {
+            // Sort markers in reverse order (to avoid changing timecodes)
+            markers.sort(function(a, b) {
+                return b.start - a.start;
+            });
             
-            // Skip if the padding would make this an invalid cut
-            if (start >= end) continue;
+            for (var i = 0; i < markers.length; i++) {
+                var start = markers[i].start + padding;
+                var end = markers[i].end - padding;
+                
+                // Skip if padding would make this an invalid cut
+                if (start >= end) continue;
+                
+                $.writeln("Processing cut " + i + ": " + start + " to " + end);
+                
+                // Create time objects
+                var startTime = new Time();
+                startTime.seconds = start;
+                
+                var endTime = new Time();
+                endTime.seconds = end;
+                
+                // Try standard sequence methods
+                try {
+                    // Select the range (important for the next step)
+                    activeSequence.setInPoint(startTime.ticks);
+                    activeSequence.setOutPoint(endTime.ticks);
+                    
+                    // Perform a ripple delete
+                    // This is the built-in equivalent of Edit > Ripple Delete
+                    app.executeCommand(19); // 19 is the ID for "Ripple Delete"
+                    
+                    cutCount++;
+                    $.writeln("Cut " + i + " successful");
+                } catch (cutError) {
+                    $.writeln("Error cutting section " + i + ": " + cutError.message);
+                }
+            }
             
-            // Create a time object for the start and end
-            var startTime = new Time();
-            startTime.seconds = start;
+            app.project.endUndoGroup();
             
-            var endTime = new Time();
-            endTime.seconds = end;
+            return JSON.stringify({
+                success: true,
+                cutCount: cutCount
+            });
+        } catch (error) {
+            app.project.endUndoGroup();
             
-            // Select the range
-            qeSequence.setInPoint(startTime.ticks);
-            qeSequence.setOutPoint(endTime.ticks);
-            
-            // Ripple delete the selected range
-            qeSequence.remove(true); // true for ripple delete
-            
-            cutCount++;
+            return JSON.stringify({
+                error: "Error during cutting: " + error.message
+            });
+        }
+    } catch (outerError) {
+        try {
+            app.project.endUndoGroup();
+        } catch (e) {
+            // Ignore errors when ending undo group
         }
         
-        // End the undo group
-        app.project.endUndoGroup();
-        
         return JSON.stringify({
-            success: true,
-            cutCount: cutCount
-        });
-    } catch (error) {
-        // End the undo group in case of error
-        app.project.endUndoGroup();
-        
-        return JSON.stringify({
-            error: "Error cutting silence: " + error.message
+            error: "Outer error: " + outerError.message
         });
     }
 }
