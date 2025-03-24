@@ -47,8 +47,10 @@ analyzeBtn.addEventListener('click', function() {
     var paramsStr = JSON.stringify(params);
     
     // Call ExtendScript function
-    // Make sure we're properly quoting the JSON string for ExtendScript
-    csInterface.evalScript('analyzeSilence(\'' + paramsStr.replace(/\\/g, '\\\\').replace(/'/g, '\\\'') + '\')', function(result) {
+    // Call ExtendScript function with proper JSON string - using a different approach
+    var jsCode = 'analyzeSilence(' + JSON.stringify(paramsStr) + ')';
+    console.log("Executing JS code:", jsCode);
+    csInterface.evalScript(jsCode, function(result) {
         try {
             // Parse the result
             silenceResults = JSON.parse(result);
@@ -83,25 +85,51 @@ cutBtn.addEventListener('click', function() {
     
     var params = {
         markers: silenceResults.markers,
-        padding: paddingSlider.value
+        padding: parseInt(paddingSlider.value)
     };
     
     // Convert the params object to a string for ExtendScript
     var paramsStr = JSON.stringify(params);
+    console.log("Sending to ExtendScript:", paramsStr);
     
-    // Call ExtendScript function
-    csInterface.evalScript('cutSilence(' + paramsStr + ')', function(result) {
+    // Call ExtendScript function with proper JSON string - using a different approach
+    var jsCode = 'cutSilence(' + JSON.stringify(paramsStr) + ')';
+    console.log("Executing JS code:", jsCode);
+    csInterface.evalScript(jsCode, function(result) {
+        // Log the exact raw result for debugging
+        console.log("Raw result from ExtendScript (cutSilence):", result);
+        document.getElementById('status').innerHTML = '<p>Raw result: ' + result + '</p>';
+        
         try {
-            var cutResults = JSON.parse(result);
+            // Try to parse JSON with extra safety
+            var cutResults;
+            if (typeof result === 'string') {
+                if (result.trim().startsWith('Error:')) {
+                    updateStatus('ExtendScript Error: ' + result);
+                    return;
+                }
+                
+                cutResults = JSON.parse(result);
+            } else {
+                updateStatus('Unexpected result type: ' + typeof result);
+                return;
+            }
+            
+            if (cutResults.debug) {
+                updateStatus('Debug info: ' + cutResults.debug);
+                return;
+            }
             
             if (cutResults.error) {
                 updateStatus('Error: ' + cutResults.error);
                 return;
             }
             
-            updateStatus('Successfully cut ' + cutResults.cutCount + ' silent sections.');
+            updateStatus('Successfully cut ' + (cutResults.cutCount || 0) + ' silent sections.');
         } catch (e) {
-            updateStatus('Error parsing results: ' + e.message);
+            console.error("Error parsing result:", e);
+            console.error("Result was:", result);
+            updateStatus('Error processing results: ' + e.message + '<br>Raw result: ' + result);
         }
     });
 });

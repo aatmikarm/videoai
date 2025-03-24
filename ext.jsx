@@ -141,12 +141,35 @@ function cutSilence(paramsStr) {
     $.writeln("------------------------------------");
     $.writeln("cutSilence called with: " + paramsStr);
     
+    // Initial validation
+    if (typeof paramsStr !== "string") {
+        $.writeln("Error: paramsStr is not a string, it's a " + typeof paramsStr);
+        return JSON.stringify({
+            error: "Invalid parameter type: expected string, got " + typeof paramsStr
+        });
+    }
+    
     try {
         // Parse parameters
         var params;
         try {
+            $.writeln("Attempting to parse: " + paramsStr);
+            $.writeln("Parameter type: " + typeof paramsStr);
+            $.writeln("Parameter length: " + paramsStr.length);
+            // Show first 100 chars
+            $.writeln("First 100 chars: " + paramsStr.substring(0, 100));
+            
             params = JSON.parse(paramsStr);
+            
+            $.writeln("Successfully parsed parameters");
+            $.writeln("markers present: " + (params.markers ? "yes" : "no"));
+            if (params.markers) {
+                $.writeln("number of markers: " + params.markers.length);
+            }
+            $.writeln("padding present: " + (params.padding ? "yes" : "no"));
         } catch (e) {
+            $.writeln("JSON parse error: " + e.message);
+            $.writeln("JSON parse error stack: " + (e.stack || "no stack available"));
             return JSON.stringify({
                 error: "Failed to parse parameters: " + e.message
             });
